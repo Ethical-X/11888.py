@@ -2,102 +2,114 @@ import secrets
 import re
 import requests
 import argparse
+
 from bs4 import BeautifulSoup as bsoup
 from time import sleep
+from contextlib import redirect_stdout
+from rich.console import Console
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-n", "--name", help="victims last or full name.", type=str, required=True)
-parser.add_argument("-o", "--outfile", help="writes results to results.txt")
+parser.add_argument("-o", "--outfile", help="writes results to results.txt", action="store_true")
 parser.add_argument("-s", "--sleep", help="adds delay between every get request crawl to reduce noise/rate limiting", type=int)
 args = parser.parse_args()
 
-def outfile():
-        pass
+def main(headers, rich_console):
 
-
-def main(headers):
+        stop = 0
         victims_info = set()
         page_num = 1
+
         print("\n")
-        print("‐-----------------------------")
-        print("| STARTING SEARCH  $^_^$     |")
-        print("‐-----------------------------")
+        console.print("[bright_blue]|-----------------------------[/bright_blue]")
+        console.print("[bright_blue]|[/bright_blue][bright_red]———STARTING SEARCH[/bright_red][green]  $^_^$[/green][bright_blue]   |[/bright_blue]")
+        console.print("[bright_blue]|-----------------------------[/bright_blue]")
+
+        session = requests.Session()
+
         while True:
 
-                if args.sleep:
-                        delay = args.sleep
-                else:
-                        delay = 1.2
-                vic_name = args.name
-                vic_name = vic_name.replace(" ", "%20")
-                query = f"https://www.11888.gr/white-pages/?query={vic_name}&amp%3Bpage=3&page={page_num}"
-                vic_urls = set()
+                try:
 
-                # selects a random User agent from headers
-                ua = secrets.choice(range(1,11))
-                header = {"User-Agent": f"{headers.get(ua)}"}
+                        if args.sleep:
+                                delay = args.sleep
+                        else:
+                                delay = 0
+                        vic_name = args.name
+                        vic_name = vic_name.replace(" ", "%20")
+                        query = f"https://www.11888.gr/white-pages/?query={vic_name}&amp%3Bpage=3&page={page_num}"
+                        vic_urls = set()
 
-                # this request returns the search results of the victim name
-                html_content = requests.get(query, headers=header)
+                        # selects a random User agent from headers
+                        ua = secrets.choice(range(1,len(headers) + 1))
+                        header = {"User-Agent": f"{headers.get(ua)}"}
 
-                if html_content.status_code == 200:
-                        html_content = html_content.text
+                        # this request returns the search results of the victim name
+                        html_content = session.get(query, headers=header)
 
-                        #grabs all urls that lead to a victim
-                        soup = bsoup(html_content, 'html.parser')
-                        for link in soup.find_all('a'):
-                                url = link.get('href')
-                                if 'white' in url and 'location' not in url and url != '/white-pages/':
-                                        vic_urls.add(url)
-                                                                                                                                                                               # visits each victim url and grabs info
-                        for vic_url in vic_urls:
+                        if html_content.status_code == 200:
+                                html_content = html_content.text
 
-                                ua = secrets.choice(range(1,11))
-                                header = {"User-Agent": f"{headers.get(ua)}"}
+                                #grabs all urls that lead to a victim
+                                soup = bsoup(html_content, 'html.parser')
+                                for link in soup.find_all('a'):
+                                        url = link.get('href')
+                                        if 'white' in url and 'location' not in url and url != '/white-pages/':
+                                                vic_urls.add(url)
 
-                                vic_url = vic_url.lstrip("/")
-                                victim_html = requests.get(f"https://www.11888.gr/{vic_url}", headers=header)
+                                # visits each victim url and grabs info
+                                for vic_url in vic_urls:
 
-                                vic_soup = bsoup(victim_html.text, "html.parser")
+                                        ua = secrets.choice(range(1,len(headers) + 1))
+                                        header = {"User-Agent": f"{headers.get(ua)}"}
 
-                                name = vic_soup.title.string.strip("| 11888.gr")
-                                addr = vic_soup.select_one("span.tw-text-gray-secondary.tw-text-left.tw-text-sm.tw-select-none")
-                                tel = re.search("tel:", victim_html.text)
-                                tel = victim_html.text[tel.start():tel.start() + 14]
+                                        vic_url = vic_url.lstrip("/")
+                                        victim_html = session.get(f"https://www.11888.gr/{vic_url}", headers=header)
 
-                                if name:
-                                        print(f"| Name: {name}")
-                                else:
-                                        name = None
-                                if addr:
-                                        print(f"| Address: {addr.get_text(strip=True)}")
-                                else:
-                                        addr = None
-                                if tel:
-                                        print(f"| Phone: {tel}")
-                                else:
-                                        tel = None
-                                print("‐-----------------------------")
+                                        vic_soup = bsoup(victim_html.text, "html.parser")
 
-                                victims_info.add((name, addr, tel))
-                                sleep(delay)
+                                        name = vic_soup.title.string.strip("| 11888.gr")
+                                        addr = vic_soup.select_one("span.tw-text-gray-secondary.tw-text-left.tw-text-sm.tw-select-none")
+                                        tel = re.search("tel:", victim_html.text)
+                                        tel = victim_html.text[tel.start():tel.start() + 14]
+
+                                        if name:
+                                                console.print(f"[bright_blue]|[/bright_blue] Name: {name}")
+                                        else:
+                                                name = None
+                                        if addr:
+                                                console.print(f"[bright_blue]|[/bright_blue] Address: {addr.get_text(strip=True)}")
+                                        else:
+                                                addr = None
+                                        if tel:
+                                                console.print(f"[bright_blue]|[/bright_blue] Phone: {tel}")
+                                        else:
+                                                tel = None
+
+                                        console.print("[bright_blue]|-----------------------------[/bright_blue]")
+
+                                        victims_info.add((name, addr, tel))
+                                        sleep(delay)
+
+                except KeyboardInterrupt:
+                        stop = 1
 
                         # page_num is incremented so recursion can happen.
                         page_num += 1
-                        if vic_urls:
+                        if vic_urls and stop == 0:
                                 continue
                         else:
-                                print("| Finished search")
-                                print(f"| Gathered info on {len(victims_info)} people.")
-                                print("‐-----------------------------")
+                                console.print("[bright_blue]|[/bright_blue] Finished search")
+                                console.print(f"[bright_blue]|[/bright_blue] Gathered info on [bright_red]{len(victims_info)}[/bright_red] people.")
+                                console.print("[bright_blue]|-----------------------------[/bright_blue]")
                                 return
 
                         vic_urls = set()
 
                 else:
-                        return print("| didnt get 200 OK")
+                        return console.print("[bright_blue]|[/bright_blue] didnt get 200 OK")
 
-
+# the user agents that will be randomly selected each request.
 agents = {1:"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
         2:"Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
         3:"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
@@ -108,4 +120,19 @@ agents = {1:"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML
         8:"Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
         9:"Mozilla/5.0 (Linux; Android 15; Pixel 9 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36",
         10:"Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/28.0 Chrome/137.0.0.0 Mobile Safari/537.36"}
-main(agents)
+
+
+console = Console()
+
+if args.outfile:
+        console.print("[bright_blue]|-----------------------------[/bright_blue]")
+        console.print("[bright_blue]|[bright_blue]      [bright_red]RUNNING SCRIPT[/bright_red]     [bright_blue]|[/bright_blue]")
+        console.print("[bright_blue]|-----------------------------[/bright_blue]")
+        console.print("[bright_blue]|[/bright_blue] Script will stop on end [bright_blue]|[/bright_blue]")
+        with open("results.txt", "w") as f:
+                with redirect_stdout(f):
+                        main(agents, console)
+        console.print("[bright_blue]|[/bright_blue] [bright_green]Finished search.[/bright_green]        [bright_blue]|[/bright_blue]")
+        console.print("[bright_blue]|-----------------------------[/bright_blue]")
+else:
+        main(agents, console)
