@@ -53,7 +53,7 @@ def main(headers, rich_console):
                                 soup = bsoup(html_content, 'html.parser')
                                 for link in soup.find_all('a'):
                                         url = link.get('href')
-                                        if 'white' in url and 'location' not in url and url != '/white-pages/':
+                                        if url and 'white' in url and 'location' not in url and url != '/white-pages/':
                                                 vic_urls.add(url)
 
                                 # visits each victim url and grabs info
