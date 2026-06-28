@@ -4,9 +4,7 @@ import requests
 import argparse
 
 from bs4 import BeautifulSoup as bsoup
-from time import sleep
-from contextlib import redirect_stdout
-from rich.console import Console
+from time import sleep                                                                                    from contextlib import redirect_stdout                                                                    from rich.console import Console
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-n", "--name", help="victims last or full name.", type=str, required=True)
@@ -29,7 +27,6 @@ def main(headers, rich_console):
         while True:
 
                 try:
-
                         if args.sleep:
                                 delay = args.sleep
                         else:
@@ -43,8 +40,15 @@ def main(headers, rich_console):
                         ua = secrets.choice(range(1,len(headers) + 1))
                         header = {"User-Agent": f"{headers.get(ua)}"}
 
-                        # this request returns the search results of the victim name
-                        html_content = session.get(query, headers=header)
+                        try:
+                            # this request returns the search results of the victim name
+                            html_content = session.get(query,timeout=4, headers=header)
+                        except requests.Timeout:
+                            print("GET Request for page timed out")
+                            return
+                        except requests.RequestException as e:
+                            print(f"request failed: {e}")
+                            return
 
                         if html_content.status_code == 200:
                                 html_content = html_content.text
@@ -63,7 +67,15 @@ def main(headers, rich_console):
                                         header = {"User-Agent": f"{headers.get(ua)}"}
 
                                         vic_url = vic_url.lstrip("/")
-                                        victim_html = session.get(f"https://www.11888.gr/{vic_url}", headers=header)
+
+                                        try:
+                                            victim_html = session.get(f"https://www.11888.gr/{vic_url}", headers=header, timeout=4)
+                                        except requests.Timeout:
+                                            print("GET request timed out")
+                                            return
+                                        except requests.RequestException as e:
+                                            print(f"Request failed: {e}")
+                                            return
 
                                         vic_soup = bsoup(victim_html.text, "html.parser")
 
@@ -137,4 +149,4 @@ if args.outfile:
         console.print("[bright_blue]|[/bright_blue] [bright_green]Finished search.[/bright_green]        [bright_blue]|[/bright_blue]")
         console.print("[bright_blue]|-----------------------------[/bright_blue]")
 else:
-        main(agents, console)
+     main(agents, console)
