@@ -11,19 +11,18 @@ from rich.console import Console
 parser = argparse.ArgumentParser()
 parser.add_argument("-n", "--name", help="victims last or full name.", type=str, required=True)
 parser.add_argument("-o", "--outfile", help="writes results to results.txt", action="store_true")
-parser.add_argument("-s", "--sleep", help="adds delay between every get request crawl to reduce noise/rate limiting", type=int)
+parser.add_argument("-s", "--sleep", help="adds delay between every get request crawl to reduce noise/rate limiting", type=float)
 args = parser.parse_args()
 
 def main(headers, rich_console):
 
-        stop = 0
         victims_info = set()
         page_num = 1
 
         print("\n")
-        console.print("[bright_blue]|-----------------------------[/bright_blue]")
-        console.print("[bright_blue]|[/bright_blue][bright_red]———STARTING SEARCH[/bright_red][green]  $^_^$[/green][bright_blue]   |[/bright_blue]")
-        console.print("[bright_blue]|-----------------------------[/bright_blue]")
+        rich_console.print("[bright_blue]|-----------------------------[/bright_blue]")
+        rich_console.print("[bright_blue]|[/bright_blue][bright_red]———STARTING SEARCH[/bright_red][green]  $^_^$[/green][bright_blue]   |[/bright_blue]")
+        rich_console.print("[bright_blue]|-----------------------------[/bright_blue]")
 
         session = requests.Session()
 
@@ -68,46 +67,49 @@ def main(headers, rich_console):
 
                                         vic_soup = bsoup(victim_html.text, "html.parser")
 
-                                        name = vic_soup.title.string.strip("| 11888.gr")
+                                        name = vic_soup.title.string.replace("| 11888.gr", "")
                                         addr = vic_soup.select_one("span.tw-text-gray-secondary.tw-text-left.tw-text-sm.tw-select-none")
                                         tel = re.search("tel:", victim_html.text)
-                                        tel = victim_html.text[tel.start():tel.start() + 14]
+
+                                        if tel:
+                                            tel = victim_html.text[tel.start():tel.start() + 14]
+                                        else:
+                                            tel = "tel:Not Found"
 
                                         if name:
-                                                console.print(f"[bright_blue]|[/bright_blue] Name: {name}")
+                                                rich_console.print(f"[bright_blue]|[/bright_blue] Name: {name}")
                                         else:
                                                 name = None
                                         if addr:
-                                                console.print(f"[bright_blue]|[/bright_blue] Address: {addr.get_text(strip=True)}")
+                                                rich_console.print(f"[bright_blue]|[/bright_blue] Address: {addr.get_text(strip=True)}")
                                         else:
                                                 addr = None
-                                        if tel:
-                                                console.print(f"[bright_blue]|[/bright_blue] Phone: {tel}")
-                                        else:
-                                                tel = None
 
-                                        console.print("[bright_blue]|-----------------------------[/bright_blue]")
+                                        rich_console.print(f"[bright_blue]|[/bright_blue] Phone: {tel}")
+
+                                        rich_console.print("[bright_blue]|-----------------------------[/bright_blue]")
 
                                         victims_info.add((name, addr, tel))
                                         sleep(delay)
+                        else:
+                            print("Didn't get 200 OK from site")
 
                 except KeyboardInterrupt:
-                        stop = 1
+                        print("stopping..")
+                        vic_urls = False
 
-                        # page_num is incremented so recursion can happen.
-                        page_num += 1
-                        if vic_urls and stop == 0:
-                                continue
-                        else:
-                                console.print("[bright_blue]|[/bright_blue] Finished search")
-                                console.print(f"[bright_blue]|[/bright_blue] Gathered info on [bright_red]{len(victims_info)}[/bright_red] people.")
-                                console.print("[bright_blue]|-----------------------------[/bright_blue]")
-                                return
-
-                        vic_urls = set()
+                # page_num is incremented so recursion can happen.
+                page_num += 1
+                if vic_urls:
+                            continue
 
                 else:
-                        return console.print("[bright_blue]|[/bright_blue] didnt get 200 OK")
+                            rich_console.print("[bright_blue]|[/bright_blue] Finished search")
+                            rich_console.print(f"[bright_blue]|[/bright_blue] Gathered info on [bright_red]{len(victims_info)}[/bright_red] people.")
+                            rich_console.print("[bright_blue]|-----------------------------[/bright_blue]")
+                            return
+
+                vic_urls = set()
 
 # the user agents that will be randomly selected each request.
 agents = {1:"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
