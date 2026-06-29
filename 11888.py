@@ -36,7 +36,7 @@ def main(headers, rich_console):
                                 delay = 0
                         person_name = args.name
                         person_name = person_name.replace(" ", "%20")
-                        query = f"https://www.11888.gr/white-pages/?query={vic_name}&amp%3Bpage=3&page={page_num}"
+                        query = f"https://www.11888.gr/white-pages/?query={person_name}&amp%3Bpage=3&page={page_num}"
                         person_urls = set()
 
                         # selects a random User agent from headers
@@ -72,7 +72,7 @@ def main(headers, rich_console):
                                         person_url = person_url.lstrip("/")
 
                                         try:
-                                            person_html = session.get(f"https://www.11888.gr/{vic_url}", headers=header, timeout=4)
+                                            person_html = session.get(f"https://www.11888.gr/{person_url}", headers=header, timeout=4)
                                         except requests.Timeout:
                                             print("GET request timed out")
                                             return
@@ -80,7 +80,7 @@ def main(headers, rich_console):
                                             print(f"Request failed: {e}")
                                             return
 
-                                        person_soup = bsoup(victim_html.text, "html.parser")
+                                        person_soup = bsoup(person_html.text, "html.parser")
 
                                         name = person_soup.title.string.replace("| 11888.gr", "")
                                         addr = person_soup.select_one("span.tw-text-gray-secondary.tw-text-left.tw-text-sm.tw-select-none")
@@ -111,7 +111,7 @@ def main(headers, rich_console):
 
                 except KeyboardInterrupt:
                         print("stopping..")
-                        vic_urls = False
+                        person_urls = False
 
                 # page_num is incremented so recursion can happen.
                 page_num += 1
@@ -120,7 +120,7 @@ def main(headers, rich_console):
 
                 else:
                             rich_console.print("[bright_blue]|[/bright_blue] Finished search")
-                            rich_console.print(f"[bright_blue]|[/bright_blue] Gathered info on [bright_red]{len(victims_info)}[/bright_red] people.")
+                            rich_console.print(f"[bright_blue]|[/bright_blue] Gathered info on [bright_red]{len(persons_info)}[/bright_red] people.")
                             rich_console.print("[bright_blue]|-----------------------------[/bright_blue]")
                             return
 
