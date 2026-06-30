@@ -6,4 +6,4 @@ Users are responsible for complying with:
 - Privacy regulations
 - Local regulations regarding personal data
 
-This tool collects only information that is publicly accessible through the target service.
+This tool collects only information that is publicly accessible through the target service and was a personal project for python practice.
