@@ -36,7 +36,7 @@ def visit_urls(urls, ua_headers, site_session, r_console, p_info, wait):
         name = person_soup.title.string.replace("| 11888.gr", "")
         addr = person_soup.select_one("span.tw-text-gray-secondary.tw-text-left.tw-text-sm.tw-select-none")
         tel = re.search("tel:", person_html.text)
-                                                                                                                                                               if tel:
+        if tel:
             tel = person_html.text[tel.start():tel.start() + 14]
         else:
             tel = "tel:Not Found"
