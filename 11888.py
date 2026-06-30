@@ -1,17 +1,23 @@
-import secrets                                                                          import re
-import requests                                                                         import argparse
+import secrets
+import re
+import requests
+import argparse
 
 from bs4 import BeautifulSoup as bsoup
-from time import sleep                                                                  from contextlib import redirect_stdout
+from time import sleep
+from contextlib import redirect_stdout
 from rich.console import Console
-parser = argparse.ArgumentParser()                                                      parser.add_argument("-n", "--name", help="persons last or full name.", type=str, required=True)
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-n", "--name", help="persons last or full name.", type=str, required=True)
 parser.add_argument("-o", "--outfile", help="writes results to results.txt", action="store_true")
 parser.add_argument("-s", "--sleep", help="adds delay between every get request crawl to reduce noise/rate limiting", type=float)
 args = parser.parse_args()
 
 def visit_urls(urls, ua_headers, site_session, r_console, p_info, wait):
 
-    # visits each persons url and grabs info                                                for url in urls:
+    # visits each persons url and grabs info
+    for url in urls:
 
         header = {"User-Agent": secrets.choice(list(ua_headers.values()))}
         url = url.lstrip("/")
@@ -30,8 +36,7 @@ def visit_urls(urls, ua_headers, site_session, r_console, p_info, wait):
         name = person_soup.title.string.replace("| 11888.gr", "")
         addr = person_soup.select_one("span.tw-text-gray-secondary.tw-text-left.tw-text-sm.tw-select-none")
         tel = re.search("tel:", person_html.text)
-
-        if tel:
+                                                                                                                                                               if tel:
             tel = person_html.text[tel.start():tel.start() + 14]
         else:
             tel = "tel:Not Found"
