@@ -1,27 +1,19 @@
-import secrets
-import re
-import requests
-import argparse
+import secrets                                                                          import re
+import requests                                                                         import argparse
 
 from bs4 import BeautifulSoup as bsoup
-from time import sleep
-from contextlib import redirect_stdout
+from time import sleep                                                                  from contextlib import redirect_stdout
 from rich.console import Console
-
-parser = argparse.ArgumentParser()
-parser.add_argument("-n", "--name", help="persons last or full name.", type=str, required=True)
+parser = argparse.ArgumentParser()                                                      parser.add_argument("-n", "--name", help="persons last or full name.", type=str, required=True)
 parser.add_argument("-o", "--outfile", help="writes results to results.txt", action="store_true")
 parser.add_argument("-s", "--sleep", help="adds delay between every get request crawl to reduce noise/rate limiting", type=float)
 args = parser.parse_args()
 
 def visit_urls(urls, ua_headers, site_session, r_console, p_info, wait):
 
-    # visits each persons url and grabs info
-    for url in urls:
+    # visits each persons url and grabs info                                                for url in urls:
 
-        ua = secrets.choice(range(1,len(ua_headers) + 1))
-        header = {"User-Agent": f"{ua_headers.get(ua)}"}
-
+        header = {"User-Agent": secrets.choice(list(ua_headers.values()))}
         url = url.lstrip("/")
 
         try:
@@ -36,7 +28,8 @@ def visit_urls(urls, ua_headers, site_session, r_console, p_info, wait):
         person_soup = bsoup(person_html.text, "html.parser")
 
         name = person_soup.title.string.replace("| 11888.gr", "")
-        addr = person_soup.select_one("span.tw-text-gray-secondary.tw-text-left.tw-text-sm.tw-select-none")                                                    tel = re.search("tel:", person_html.text)
+        addr = person_soup.select_one("span.tw-text-gray-secondary.tw-text-left.tw-text-sm.tw-select-none")
+        tel = re.search("tel:", person_html.text)
 
         if tel:
             tel = person_html.text[tel.start():tel.start() + 14]
@@ -56,7 +49,12 @@ def visit_urls(urls, ua_headers, site_session, r_console, p_info, wait):
 
         r_console.print("[bright_blue]|-----------------------------[/bright_blue]")
 
-        p_info.add((name, addr, tel))
+        if addr:
+            addr_text = addr.get_text(strip=True)
+        else:
+            addr_text = None
+
+        p_info.add((name, addr_text, tel))
         sleep(wait)
 
 
@@ -87,8 +85,7 @@ def main(headers, rich_console):
                         person_urls = set()
 
                         # selects a random User agent from headers
-                        ua = secrets.choice(range(1,len(headers) + 1))
-                        header = {"User-Agent": f"{headers.get(ua)}"}
+                        header = {"User-Agent": secrets.choice(list(headers.values()))}
 
                         try:
                             # this request returns the search results of the persons name
