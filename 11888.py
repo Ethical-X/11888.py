@@ -14,10 +14,61 @@ parser.add_argument("-o", "--outfile", help="writes results to results.txt", act
 parser.add_argument("-s", "--sleep", help="adds delay between every get request crawl to reduce noise/rate limiting", type=float)
 args = parser.parse_args()
 
+def visit_urls(urls, ua_headers, site_session, r_console, p_info, wait):
+
+    # visits each persons url and grabs info
+    for url in urls:
+
+        ua = secrets.choice(range(1,len(ua_headers) + 1))
+        header = {"User-Agent": f"{ua_headers.get(ua)}"}
+
+        url = url.lstrip("/")
+
+        try:
+            person_html = site_session.get(f"https://www.11888.gr/{url}", headers=header, timeout=4)
+        except requests.Timeout:
+            print("GET request timed out")
+            return
+        except requests.RequestException as e:
+            print(f"Request failed: {e}")
+            return
+
+        person_soup = bsoup(person_html.text, "html.parser")
+
+        name = person_soup.title.string.replace("| 11888.gr", "")
+        addr = person_soup.select_one("span.tw-text-gray-secondary.tw-text-left.tw-text-sm.tw-select-none")                                                    tel = re.search("tel:", person_html.text)
+
+        if tel:
+            tel = person_html.text[tel.start():tel.start() + 14]
+        else:
+            tel = "tel:Not Found"
+
+        if name:
+            r_console.print(f"[bright_blue]|[/bright_blue] Name: {name}")
+        else:
+            name = None
+        if addr:
+            r_console.print(f"[bright_blue]|[/bright_blue] Address: {addr.get_text(strip=True)}")
+        else:
+           addr = None
+
+        r_console.print(f"[bright_blue]|[/bright_blue] Phone: {tel}")
+
+        r_console.print("[bright_blue]|-----------------------------[/bright_blue]")
+
+        p_info.add((name, addr, tel))
+        sleep(wait)
+
+
 def main(headers, rich_console):
 
         persons_info = set()
         page_num = 1
+
+        if args.sleep:
+            delay = args.sleep
+        else:
+            delay = 0
 
         print("\n")
         rich_console.print("[bright_blue]|-----------------------------[/bright_blue]")
@@ -30,10 +81,6 @@ def main(headers, rich_console):
 
                 try:
 
-                        if args.sleep:
-                                delay = args.sleep
-                        else:
-                                delay = 0
                         person_name = args.name
                         person_name = person_name.replace(" ", "%20")
                         query = f"https://www.11888.gr/white-pages/?query={person_name}&amp%3Bpage=3&page={page_num}"
@@ -45,7 +92,7 @@ def main(headers, rich_console):
 
                         try:
                             # this request returns the search results of the persons name
-                            html_content = session.get(query,timeout=1, headers=header)
+                            html_content = session.get(query,timeout=4, headers=header)
                         except requests.Timeout:
                             print("GET Request for page timed out")
                             return
@@ -63,49 +110,8 @@ def main(headers, rich_console):
                                         if url and 'white' in url and 'location' not in url and url != '/white-pages/':
                                                 person_urls.add(url)
 
-                                # visits each persons url and grabs info
-                                for person_url in person_urls:
+                                visit_urls(person_urls, headers, session, rich_console, persons_info, delay)
 
-                                        ua = secrets.choice(range(1,len(headers) + 1))
-                                        header = {"User-Agent": f"{headers.get(ua)}"}
-
-                                        person_url = person_url.lstrip("/")
-
-                                        try:
-                                            person_html = session.get(f"https://www.11888.gr/{person_url}", headers=header, timeout=4)
-                                        except requests.Timeout:
-                                            print("GET request timed out")
-                                            return
-                                        except requests.RequestException as e:
-                                            print(f"Request failed: {e}")
-                                            return
-
-                                        person_soup = bsoup(person_html.text, "html.parser")
-
-                                        name = person_soup.title.string.replace("| 11888.gr", "")
-                                        addr = person_soup.select_one("span.tw-text-gray-secondary.tw-text-left.tw-text-sm.tw-select-none")
-                                        tel = re.search("tel:", person_html.text)
-
-                                        if tel:
-                                            tel = person_html.text[tel.start():tel.start() + 14]
-                                        else:
-                                            tel = "tel:Not Found"
-
-                                        if name:
-                                                rich_console.print(f"[bright_blue]|[/bright_blue] Name: {name}")
-                                        else:
-                                                name = None
-                                        if addr:
-                                                rich_console.print(f"[bright_blue]|[/bright_blue] Address: {addr.get_text(strip=True)}")
-                                        else:
-                                                addr = None
-
-                                        rich_console.print(f"[bright_blue]|[/bright_blue] Phone: {tel}")
-
-                                        rich_console.print("[bright_blue]|-----------------------------[/bright_blue]")
-
-                                        persons_info.add((name, addr, tel))
-                                        sleep(delay)
                         else:
                             print("Didn't get 200 OK from site")
 
